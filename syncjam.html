@@ -12,18 +12,21 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         .container {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 2rem;
             max-width: 800px;
@@ -43,11 +46,6 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-        }
-
-        .header p {
-            opacity: 0.8;
-            font-size: 1.1rem;
         }
 
         .status {
@@ -79,6 +77,7 @@
             background: rgba(255, 255, 255, 0.1);
             color: white;
             font-size: 1rem;
+            -webkit-appearance: none;
         }
 
         .room-section input::placeholder {
@@ -96,6 +95,7 @@
             text-decoration: none;
             display: inline-block;
             text-align: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .btn-primary {
@@ -108,9 +108,8 @@
             color: white;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        .btn:active {
+            transform: scale(0.95);
         }
 
         .btn:disabled {
@@ -132,41 +131,30 @@
             border-radius: 10px;
         }
 
-        .control-group h3 {
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-        }
-
-        .slider-container {
-            margin: 0.5rem 0;
-        }
-
         .slider {
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.2);
-            outline: none;
+            height: 40px;
             -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
         }
 
         .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             background: #4ecdc4;
             cursor: pointer;
-        }
-
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4ecdc4;
-            cursor: pointer;
-            border: none;
         }
 
         .level-meter {
@@ -184,52 +172,6 @@
             transition: width 0.1s;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-        }
-
-        .stat {
-            text-align: center;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 0.8rem;
-            border-radius: 8px;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            display: block;
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            opacity: 0.7;
-        }
-
-        .instructions {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-        }
-
-        .instructions h3 {
-            margin-bottom: 0.5rem;
-            color: #4ecdc4;
-        }
-
-        .instructions ol {
-            margin-left: 1.5rem;
-        }
-
-        .instructions li {
-            margin: 0.3rem 0;
-            opacity: 0.9;
-        }
-
         .warning {
             background: rgba(255, 193, 7, 0.2);
             border: 1px solid rgba(255, 193, 7, 0.5);
@@ -237,6 +179,17 @@
             border-radius: 8px;
             margin: 1rem 0;
             text-align: center;
+        }
+
+        .debug {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
         }
 
         @media (max-width: 600px) {
@@ -252,10 +205,6 @@
             .room-section {
                 flex-direction: column;
             }
-            
-            .controls {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
@@ -263,7 +212,7 @@
     <div class="container">
         <div class="header">
             <h1>🎸 SyncJam</h1>
-            <p>Remote Music Collaboration with Perfect Synchronization</p>
+            <p>Remote Music Collaboration</p>
         </div>
 
         <div class="status disconnected" id="status">
@@ -271,7 +220,7 @@
         </div>
 
         <div class="room-section">
-            <input type="text" id="roomName" placeholder="Enter room name (e.g., 'jordan-jam')" 
+            <input type="text" id="roomName" placeholder="Enter room name" 
                    maxlength="50" autocomplete="off">
             <button class="btn btn-primary" id="createBtn" onclick="createRoom()">Create Room</button>
             <button class="btn btn-success" id="joinBtn" onclick="joinRoom()">Join Room</button>
@@ -283,19 +232,18 @@
         </div>
 
         <div class="warning">
-            ⚠️ <strong>IMPORTANT:</strong> Use headphones to prevent audio feedback!
+            ⚠️ <strong>IMPORTANT:</strong> Use headphones to prevent feedback!
         </div>
 
         <div class="controls" id="controls" hidden>
             <div class="control-group">
                 <h3>🎛️ Sync Control</h3>
-                <div class="slider-container">
+                <div>
                     <label>Sync Buffer: <span id="bufferValue">200ms</span></label>
                     <input type="range" class="slider" id="bufferSlider" 
                            min="50" max="500" value="200" step="10"
                            oninput="updateBuffer(this.value)">
                 </div>
-                <div>Quality: <span id="qualityIndicator">Optimal</span></div>
             </div>
 
             <div class="control-group">
@@ -311,96 +259,131 @@
             </div>
         </div>
 
-        <div class="stats" id="stats" hidden>
-            <div class="stat">
-                <span class="stat-value" id="pingValue">--</span>
-                <span class="stat-label">Ping (ms)</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="jitterValue">--</span>
-                <span class="stat-label">Jitter (ms)</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="syncScore">--</span>
-                <span class="stat-label">Sync Score</span>
-            </div>
-            <div class="stat">
-                <span class="stat-value" id="networkQuality">--</span>
-                <span class="stat-label">Network</span>
-            </div>
-        </div>
-
-        <div class="instructions">
-            <h3>🚀 Quick Start</h3>
-            <ol>
-                <li><strong>Person 1:</strong> Enter room name → Click "Create Room" → Share link</li>
-                <li><strong>Person 2:</strong> Click shared link OR enter same room name → Click "Join Room"</li>
-                <li><strong>Both:</strong> Wait for "Connected!" → Click "Start Jamming"</li>
-                <li><strong>Important:</strong> Use headphones to prevent feedback!</li>
-                <li>Adjust sync buffer if needed - both players hear everything with the same delay</li>
-            </ol>
+        <div class="debug" id="debug">
+            <strong>Debug Log:</strong><br>
+            <div id="debugLog"></div>
         </div>
     </div>
 
     <script>
+        // Debug logging
+        function log(message) {
+            console.log('[SyncJam]', message);
+            const debugLog = document.getElementById('debugLog');
+            const time = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `${time}: ${message}<br>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+
         class SyncJamEngine {
             constructor() {
                 this.audioContext = null;
                 this.localStream = null;
                 this.remoteStream = null;
                 this.peerConnection = null;
-                this.dataChannel = null;
+                this.ws = null;
                 
                 // Synchronization
                 this.delayNode = null;
                 this.bufferSize = 0.2; // 200ms default
                 this.isJamming = false;
                 
-                // Network monitoring
-                this.pingTimes = [];
-                this.jitterHistory = [];
-                this.lastPingTime = 0;
-                this.networkStats = {
-                    ping: 0,
-                    jitter: 0,
-                    quality: 'unknown'
-                };
-                
                 // Audio analysis
                 this.localAnalyser = null;
                 this.remoteAnalyser = null;
-                this.localLevelData = new Uint8Array(512);
-                this.remoteLevelData = new Uint8Array(512);
+                this.localLevelData = new Uint8Array(256);
+                this.remoteLevelData = new Uint8Array(256);
                 
                 // Connection state
                 this.roomName = '';
                 this.isHost = false;
                 this.connectionState = 'disconnected';
                 
-                this.setupEventListeners();
-                this.initializeRTC();
+                // iOS audio context fix
+                this.setupIOSAudioContext();
             }
 
-            setupEventListeners() {
-                // Handle page unload
-                window.addEventListener('beforeunload', () => {
-                    this.cleanup();
-                });
-
-                // Handle URL room joining
-                const urlParams = new URLSearchParams(window.location.search);
-                const roomFromUrl = urlParams.get('room');
-                if (roomFromUrl) {
-                    document.getElementById('roomName').value = roomFromUrl;
-                }
+            setupIOSAudioContext() {
+                // iOS requires user interaction to start audio
+                document.addEventListener('touchend', () => {
+                    if (this.audioContext && this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                }, { once: true });
             }
 
-            initializeRTC() {
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+                
+                log(`Connecting to WebSocket: ${wsUrl}`);
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    log('WebSocket connected');
+                    this.ws.send(JSON.stringify({
+                        type: 'join',
+                        room: this.roomName
+                    }));
+                };
+
+                this.ws.onmessage = async (event) => {
+                    const data = JSON.parse(event.data);
+                    log(`Received: ${data.type}`);
+                    
+                    switch (data.type) {
+                        case 'peer-joined':
+                            log('Peer joined room');
+                            if (this.isHost) {
+                                await this.createOffer();
+                            }
+                            break;
+                            
+                        case 'offer':
+                            if (!this.isHost) {
+                                await this.handleOffer(data.data);
+                            }
+                            break;
+                            
+                        case 'answer':
+                            if (this.isHost) {
+                                await this.handleAnswer(data.data);
+                            }
+                            break;
+                            
+                        case 'ice-candidate':
+                            await this.handleIceCandidate(data.data);
+                            break;
+                            
+                        case 'peer-left':
+                            log('Peer left room');
+                            this.cleanup();
+                            break;
+                    }
+                };
+
+                this.ws.onerror = (error) => {
+                    log(`WebSocket error: ${error}`);
+                };
+
+                this.ws.onclose = () => {
+                    log('WebSocket disconnected');
+                    this.updateStatus('disconnected', 'Connection lost');
+                };
+            }
+
+            async initializePeerConnection() {
                 const configuration = {
                     iceServers: [
                         { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
                         { 
                             urls: 'turn:openrelay.metered.ca:80',
+                            username: 'openrelayproject',
+                            credential: 'openrelayproject'
+                        },
+                        {
+                            urls: 'turn:openrelay.metered.ca:443',
                             username: 'openrelayproject',
                             credential: 'openrelayproject'
                         }
@@ -408,309 +391,170 @@
                 };
 
                 this.peerConnection = new RTCPeerConnection(configuration);
+                log('Created RTCPeerConnection');
                 
                 this.peerConnection.onicecandidate = (event) => {
                     if (event.candidate) {
+                        log('Sending ICE candidate');
                         this.sendSignal('ice-candidate', event.candidate);
                     }
                 };
 
                 this.peerConnection.ontrack = (event) => {
+                    log('Received remote track');
                     this.handleRemoteStream(event.streams[0]);
                 };
 
                 this.peerConnection.onconnectionstatechange = () => {
                     const state = this.peerConnection.connectionState;
-                    console.log('Connection state:', state);
+                    log(`Connection state: ${state}`);
                     
                     if (state === 'connected') {
                         this.updateStatus('connected', 'Connected! Ready to jam 🎵');
                         document.getElementById('startBtn').disabled = false;
-                        this.startNetworkMonitoring();
                     } else if (state === 'disconnected' || state === 'failed') {
                         this.updateStatus('disconnected', 'Connection lost');
-                        this.stopJamming();
                     }
                 };
 
-                // Create data channel for signaling
-                if (this.isHost) {
-                    this.dataChannel = this.peerConnection.createDataChannel('sync', {
-                        ordered: true
+                // Add local stream
+                if (this.localStream) {
+                    this.localStream.getTracks().forEach(track => {
+                        log(`Adding local track: ${track.kind}`);
+                        this.peerConnection.addTrack(track, this.localStream);
                     });
-                    this.setupDataChannel();
-                } else {
-                    this.peerConnection.ondatachannel = (event) => {
-                        this.dataChannel = event.channel;
-                        this.setupDataChannel();
-                    };
-                }
-            }
-
-            setupDataChannel() {
-                this.dataChannel.onopen = () => {
-                    console.log('Data channel opened');
-                };
-
-                this.dataChannel.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    this.handleDataChannelMessage(data);
-                };
-            }
-
-            handleDataChannelMessage(data) {
-                switch (data.type) {
-                    case 'sync-ping':
-                        // Respond to ping
-                        this.dataChannel.send(JSON.stringify({
-                            type: 'sync-pong',
-                            timestamp: data.timestamp,
-                            responseTime: Date.now()
-                        }));
-                        break;
-                    case 'sync-pong':
-                        // Calculate ping
-                        const ping = Date.now() - data.timestamp;
-                        this.updateNetworkStats(ping);
-                        break;
                 }
             }
 
             async initializeAudio() {
                 try {
+                    log('Initializing audio...');
+                    
+                    // iOS-specific audio context
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
                         sampleRate: 48000,
                         latencyHint: 'interactive'
                     });
 
-                    // Get user media with high quality settings
+                    // Resume context if suspended (iOS)
+                    if (this.audioContext.state === 'suspended') {
+                        await this.audioContext.resume();
+                    }
+
+                    // Get user media with iOS-compatible settings
                     this.localStream = await navigator.mediaDevices.getUserMedia({
                         audio: {
-                            sampleRate: 48000,
-                            channelCount: 2,
                             echoCancellation: false,
                             noiseSuppression: false,
                             autoGainControl: false,
-                            latency: 0.01
+                            sampleRate: 48000
                         }
                     });
-
-                    // Add tracks to peer connection
-                    this.localStream.getTracks().forEach(track => {
-                        this.peerConnection.addTrack(track, this.localStream);
-                    });
+                    
+                    log('Got user media');
 
                     // Create delay node for synchronization
                     this.delayNode = this.audioContext.createDelay(1.0);
                     this.delayNode.delayTime.setValueAtTime(this.bufferSize, this.audioContext.currentTime);
-                    
-                    // Connect to output
                     this.delayNode.connect(this.audioContext.destination);
 
                     // Setup local audio analysis
                     const localSource = this.audioContext.createMediaStreamSource(this.localStream);
                     this.localAnalyser = this.audioContext.createAnalyser();
-                    this.localAnalyser.fftSize = 1024;
-                    this.localAnalyser.smoothingTimeConstant = 0.8;
+                    this.localAnalyser.fftSize = 512;
                     
-                    // Route local audio through delay for synchronization
                     localSource.connect(this.localAnalyser);
                     localSource.connect(this.delayNode);
-
+                    
+                    log('Audio initialized successfully');
                     return true;
                 } catch (error) {
-                    console.error('Audio initialization failed:', error);
+                    log(`Audio initialization failed: ${error.message}`);
                     alert('Microphone access required. Please allow microphone access and try again.');
                     return false;
                 }
             }
 
             handleRemoteStream(stream) {
+                log('Handling remote stream');
                 this.remoteStream = stream;
                 
                 if (this.audioContext && this.delayNode) {
-                    // Create remote audio analysis
                     const remoteSource = this.audioContext.createMediaStreamSource(stream);
                     this.remoteAnalyser = this.audioContext.createAnalyser();
-                    this.remoteAnalyser.fftSize = 1024;
-                    this.remoteAnalyser.smoothingTimeConstant = 0.8;
+                    this.remoteAnalyser.fftSize = 512;
                     
-                    // Route remote audio through same delay node for synchronization
                     remoteSource.connect(this.remoteAnalyser);
                     remoteSource.connect(this.delayNode);
+                    
+                    log('Remote audio connected');
                 }
             }
 
             async createOffer() {
+                log('Creating offer...');
                 const offer = await this.peerConnection.createOffer({
                     offerToReceiveAudio: true
                 });
                 await this.peerConnection.setLocalDescription(offer);
-                return offer;
+                this.sendSignal('offer', offer);
             }
 
-            async createAnswer(offer) {
+            async handleOffer(offer) {
+                log('Handling offer...');
                 await this.peerConnection.setRemoteDescription(offer);
+                
                 const answer = await this.peerConnection.createAnswer();
                 await this.peerConnection.setLocalDescription(answer);
-                return answer;
+                this.sendSignal('answer', answer);
             }
 
             async handleAnswer(answer) {
+                log('Handling answer...');
                 await this.peerConnection.setRemoteDescription(answer);
             }
 
             async handleIceCandidate(candidate) {
-                await this.peerConnection.addIceCandidate(candidate);
+                log('Adding ICE candidate');
+                try {
+                    await this.peerConnection.addIceCandidate(candidate);
+                } catch (error) {
+                    log(`Error adding ICE candidate: ${error.message}`);
+                }
             }
 
             sendSignal(type, data) {
-                // For demo purposes, using localStorage + storage events for signaling
-                // In production, use a proper signaling server
-                const signal = {
-                    type,
-                    data,
-                    room: this.roomName,
-                    timestamp: Date.now()
-                };
-                
-                localStorage.setItem(`syncjam_signal_${this.roomName}`, JSON.stringify(signal));
-            }
-
-            startSignalingListener() {
-                window.addEventListener('storage', (event) => {
-                    if (event.key === `syncjam_signal_${this.roomName}`) {
-                        const signal = JSON.parse(event.newValue);
-                        if (signal.timestamp > Date.now() - 5000) { // Ignore old signals
-                            this.handleSignal(signal);
-                        }
-                    }
-                });
-            }
-
-            async handleSignal(signal) {
-                try {
-                    switch (signal.type) {
-                        case 'offer':
-                            if (!this.isHost) {
-                                const answer = await this.createAnswer(signal.data);
-                                this.sendSignal('answer', answer);
-                            }
-                            break;
-                        case 'answer':
-                            if (this.isHost) {
-                                await this.handleAnswer(signal.data);
-                            }
-                            break;
-                        case 'ice-candidate':
-                            await this.handleIceCandidate(signal.data);
-                            break;
-                    }
-                } catch (error) {
-                    console.error('Signal handling error:', error);
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify({
+                        type,
+                        data,
+                        room: this.roomName
+                    }));
                 }
             }
 
             updateBuffer(value) {
-                this.bufferSize = value / 1000; // Convert ms to seconds
+                this.bufferSize = value / 1000;
                 document.getElementById('bufferValue').textContent = value + 'ms';
                 
                 if (this.delayNode) {
                     this.delayNode.delayTime.setValueAtTime(this.bufferSize, this.audioContext.currentTime);
                 }
-
-                // Update quality indicator
-                this.updateQualityIndicator();
-            }
-
-            updateQualityIndicator() {
-                const ping = this.networkStats.ping;
-                const buffer = this.bufferSize * 1000;
-                const qualityEl = document.getElementById('qualityIndicator');
-                
-                if (buffer > ping * 3) {
-                    qualityEl.textContent = 'Excellent';
-                    qualityEl.style.color = '#4ecdc4';
-                } else if (buffer > ping * 2) {
-                    qualityEl.textContent = 'Good';
-                    qualityEl.style.color = '#ffd93d';
-                } else {
-                    qualityEl.textContent = 'Increase Buffer';
-                    qualityEl.style.color = '#ff6b6b';
-                }
-            }
-
-            startNetworkMonitoring() {
-                setInterval(() => {
-                    if (this.dataChannel && this.dataChannel.readyState === 'open') {
-                        this.dataChannel.send(JSON.stringify({
-                            type: 'sync-ping',
-                            timestamp: Date.now()
-                        }));
-                    }
-                }, 1000);
-            }
-
-            updateNetworkStats(ping) {
-                this.pingTimes.push(ping);
-                if (this.pingTimes.length > 10) {
-                    this.pingTimes.shift();
-                }
-
-                // Calculate jitter
-                if (this.pingTimes.length > 1) {
-                    const lastTwo = this.pingTimes.slice(-2);
-                    const jitter = Math.abs(lastTwo[1] - lastTwo[0]);
-                    this.jitterHistory.push(jitter);
-                    if (this.jitterHistory.length > 10) {
-                        this.jitterHistory.shift();
-                    }
-                }
-
-                // Update display
-                const avgPing = this.pingTimes.reduce((a, b) => a + b, 0) / this.pingTimes.length;
-                const avgJitter = this.jitterHistory.length > 0 
-                    ? this.jitterHistory.reduce((a, b) => a + b, 0) / this.jitterHistory.length 
-                    : 0;
-
-                this.networkStats.ping = Math.round(avgPing);
-                this.networkStats.jitter = Math.round(avgJitter);
-
-                document.getElementById('pingValue').textContent = this.networkStats.ping;
-                document.getElementById('jitterValue').textContent = this.networkStats.jitter;
-                
-                // Calculate sync score
-                const bufferMs = this.bufferSize * 1000;
-                const syncScore = Math.max(0, Math.min(100, 
-                    100 - (this.networkStats.jitter / bufferMs) * 100
-                ));
-                document.getElementById('syncScore').textContent = Math.round(syncScore) + '%';
-
-                // Network quality
-                let quality = 'Poor';
-                if (avgPing < 50 && avgJitter < 10) quality = 'Excellent';
-                else if (avgPing < 100 && avgJitter < 20) quality = 'Good';
-                else if (avgPing < 200 && avgJitter < 50) quality = 'Fair';
-                
-                document.getElementById('networkQuality').textContent = quality;
-                this.updateQualityIndicator();
             }
 
             startAudioAnalysis() {
                 const updateLevels = () => {
                     if (this.isJamming) {
-                        // Local audio level
                         if (this.localAnalyser) {
                             this.localAnalyser.getByteFrequencyData(this.localLevelData);
-                            const localLevel = Array.from(this.localLevelData).reduce((a, b) => a + b) / this.localLevelData.length;
-                            document.getElementById('localLevel').style.width = (localLevel / 255 * 100) + '%';
+                            const localLevel = Math.max(...this.localLevelData) / 255;
+                            document.getElementById('localLevel').style.width = (localLevel * 100) + '%';
                         }
 
-                        // Remote audio level
                         if (this.remoteAnalyser) {
                             this.remoteAnalyser.getByteFrequencyData(this.remoteLevelData);
-                            const remoteLevel = Array.from(this.remoteLevelData).reduce((a, b) => a + b) / this.remoteLevelData.length;
-                            document.getElementById('remoteLevel').style.width = (remoteLevel / 255 * 100) + '%';
+                            const remoteLevel = Math.max(...this.remoteLevelData) / 255;
+                            document.getElementById('remoteLevel').style.width = (remoteLevel * 100) + '%';
                         }
 
                         requestAnimationFrame(updateLevels);
@@ -726,16 +570,6 @@
                 statusEl.className = `status ${state}`;
             }
 
-            showControls() {
-                document.getElementById('controls').hidden = false;
-                document.getElementById('stats').hidden = false;
-            }
-
-            hideControls() {
-                document.getElementById('controls').hidden = true;
-                document.getElementById('stats').hidden = true;
-            }
-
             cleanup() {
                 if (this.localStream) {
                     this.localStream.getTracks().forEach(track => track.stop());
@@ -746,13 +580,15 @@
                 if (this.audioContext) {
                     this.audioContext.close();
                 }
+                if (this.ws) {
+                    this.ws.close();
+                }
             }
         }
 
-        // Global SyncJam instance
-        let syncJam = new SyncJamEngine();
+        // Global instance
+        let syncJam = null;
 
-        // UI Functions
         async function createRoom() {
             const roomName = document.getElementById('roomName').value.trim();
             if (!roomName) {
@@ -760,26 +596,22 @@
                 return;
             }
 
+            log(`Creating room: ${roomName}`);
+            
+            syncJam = new SyncJamEngine();
             syncJam.roomName = roomName;
             syncJam.isHost = true;
             syncJam.updateStatus('connecting', 'Creating room...');
             
             document.getElementById('shareSection').hidden = false;
-            syncJam.startSignalingListener();
             
-            // Initialize audio immediately for host
             const audioReady = await syncJam.initializeAudio();
             if (!audioReady) return;
-
-            syncJam.updateStatus('connecting', `Room "${roomName}" created! Waiting for partner...`);
             
-            // Create offer when partner joins
-            setTimeout(async () => {
-                if (syncJam.connectionState === 'connecting') {
-                    const offer = await syncJam.createOffer();
-                    syncJam.sendSignal('offer', offer);
-                }
-            }, 1000);
+            await syncJam.initializePeerConnection();
+            syncJam.connectWebSocket();
+            
+            syncJam.updateStatus('connecting', `Room "${roomName}" created! Waiting for partner...`);
         }
 
         async function joinRoom() {
@@ -789,84 +621,74 @@
                 return;
             }
 
+            log(`Joining room: ${roomName}`);
+            
+            syncJam = new SyncJamEngine();
             syncJam.roomName = roomName;
             syncJam.isHost = false;
             syncJam.updateStatus('connecting', 'Joining room...');
             
             document.getElementById('shareSection').hidden = false;
-            document.getElementById('startBtn').textContent = '🎵 Start Jamming';
             
-            syncJam.startSignalingListener();
-            
-            // Initialize audio
             const audioReady = await syncJam.initializeAudio();
             if (!audioReady) return;
-
-            syncJam.updateStatus('connecting', `Joining room "${roomName}"...`);
+            
+            await syncJam.initializePeerConnection();
+            syncJam.connectWebSocket();
         }
 
         function shareRoom() {
             const roomName = syncJam.roomName;
-            const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomName)}`;
+            const url = `${window.location.origin}/syncjam?room=${encodeURIComponent(roomName)}`;
             
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Join my SyncJam session!',
-                    text: `Join me for a music jam session in room: ${roomName}`,
-                    url: url
-                });
-            } else {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('Room link copied to clipboard! Share it with your jam partner.');
-                }).catch(() => {
-                    prompt('Copy this link to share:', url);
-                });
-            }
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Room link copied to clipboard!');
+            }).catch(() => {
+                prompt('Copy this link:', url);
+            });
         }
 
-        async function startJamming() {
-            if (syncJam.connectionState !== 'connected') {
-                alert('Wait for connection to be established first');
-                return;
-            }
-
+        function startJamming() {
+            log('Starting jam session');
             syncJam.isJamming = true;
-            syncJam.showControls();
+            document.getElementById('controls').hidden = false;
             syncJam.startAudioAnalysis();
             
-            document.getElementById('startBtn').textContent = '🔴 Stop Jamming';
+            document.getElementById('startBtn').textContent = '🔴 Stop';
             document.getElementById('startBtn').onclick = stopJamming;
             
             syncJam.updateStatus('connected', '🎵 JAMMING! 🎵');
         }
 
         function stopJamming() {
+            log('Stopping jam session');
             syncJam.isJamming = false;
-            syncJam.hideControls();
+            document.getElementById('controls').hidden = true;
             
             document.getElementById('startBtn').textContent = '🎵 Start Jamming';
             document.getElementById('startBtn').onclick = startJamming;
             
-            syncJam.updateStatus('connected', 'Connected! Ready to jam 🎵');
+            syncJam.updateStatus('connected', 'Connected! Ready to jam');
         }
 
         function updateBuffer(value) {
-            syncJam.updateBuffer(value);
+            if (syncJam) {
+                syncJam.updateBuffer(value);
+            }
         }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            // Set up slider handler
-            document.getElementById('bufferSlider').addEventListener('input', (e) => {
-                updateBuffer(e.target.value);
-            });
-
-            // Handle enter key in room name input
-            document.getElementById('roomName').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    createRoom();
-                }
-            });
+        // Check for room in URL
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const room = urlParams.get('room');
+            if (room) {
+                document.getElementById('roomName').value = room;
+            }
+            
+            // iOS audio fix
+            document.body.addEventListener('touchstart', () => {
+                log('Touch detected - iOS audio fix');
+            }, { once: true });
         });
     </script>
 </body>
