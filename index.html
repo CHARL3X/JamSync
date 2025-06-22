@@ -584,7 +584,24 @@
                 try {
                     log('Initializing audio...');
                     
-                    // iOS-specific audio context
+                    // Check if getUserMedia is available
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        throw new Error('getUserMedia not supported');
+                    }
+                    
+                    // Get user media first
+                    log('Requesting microphone access...');
+                    this.localStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        }
+                    });
+                    
+                    log('Got user media - creating audio context');
+
+                    // Create audio context after getting stream
                     this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
                         sampleRate: 48000,
                         latencyHint: 'interactive'
@@ -592,20 +609,9 @@
 
                     // Resume context if suspended (iOS)
                     if (this.audioContext.state === 'suspended') {
+                        log('Resuming suspended audio context');
                         await this.audioContext.resume();
                     }
-
-                    // Get user media with iOS-compatible settings
-                    this.localStream = await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            echoCancellation: false,
-                            noiseSuppression: false,
-                            autoGainControl: false,
-                            sampleRate: 48000
-                        }
-                    });
-                    
-                    log('Got user media');
 
                     // Create delay node for synchronization
                     this.delayNode = this.audioContext.createDelay(1.0);
@@ -616,6 +622,7 @@
                     const localSource = this.audioContext.createMediaStreamSource(this.localStream);
                     this.localAnalyser = this.audioContext.createAnalyser();
                     this.localAnalyser.fftSize = 512;
+                    this.localAnalyser.smoothingTimeConstant = 0.3;
                     
                     localSource.connect(this.localAnalyser);
                     localSource.connect(this.delayNode);
@@ -624,7 +631,17 @@
                     return true;
                 } catch (error) {
                     log(`Audio initialization failed: ${error.message}`);
-                    alert('Microphone access required. Please allow microphone access and try again.');
+                    
+                    let errorMsg = 'Microphone access required.';
+                    if (error.name === 'NotAllowedError') {
+                        errorMsg = 'Microphone permission denied. Please allow microphone access and refresh.';
+                    } else if (error.name === 'NotFoundError') {
+                        errorMsg = 'No microphone found. Please connect a microphone and try again.';
+                    } else if (error.name === 'NotSupportedError') {
+                        errorMsg = 'Microphone not supported in this browser.';
+                    }
+                    
+                    alert(errorMsg);
                     return false;
                 }
             }
@@ -1075,29 +1092,44 @@
             const micTest = document.getElementById('micTest');
             micTest.hidden = false;
             
-            if (syncJam && syncJam.localAnalyser) {
-                const micLevelData = new Uint8Array(256);
-                let micWorking = false;
-                
-                const updateMicLevel = () => {
-                    if (syncJam.localAnalyser) {
-                        syncJam.localAnalyser.getByteFrequencyData(micLevelData);
-                        const level = Math.max(...micLevelData) / 255;
-                        document.getElementById('micLevelBar').style.width = (level * 100) + '%';
-                        
-                        if (level > 0.1 && !micWorking) {
-                            micWorking = true;
-                            document.getElementById('micStatus').textContent = '✅ Microphone working!';
-                            document.getElementById('micStatus').style.color = '#4ecdc4';
-                        }
-                        
-                        if (micTest.hidden === false) {
+            // Wait for audio initialization
+            const checkMicReady = () => {
+                if (syncJam && syncJam.localAnalyser && syncJam.audioContext) {
+                    log('Mic test ready - starting level monitoring');
+                    const micLevelData = new Uint8Array(256);
+                    let micWorking = false;
+                    let noSignalCount = 0;
+                    
+                    const updateMicLevel = () => {
+                        if (syncJam.localAnalyser && micTest.hidden === false) {
+                            syncJam.localAnalyser.getByteFrequencyData(micLevelData);
+                            const level = Math.max(...micLevelData) / 255;
+                            document.getElementById('micLevelBar').style.width = (level * 100) + '%';
+                            
+                            if (level > 0.05 && !micWorking) {
+                                micWorking = true;
+                                document.getElementById('micStatus').textContent = '✅ Microphone working!';
+                                document.getElementById('micStatus').style.color = '#4ecdc4';
+                                log('Microphone test passed');
+                            } else if (level < 0.01) {
+                                noSignalCount++;
+                                if (noSignalCount > 30 && !micWorking) {
+                                    document.getElementById('micStatus').textContent = '🔇 Speak louder or check mic permissions';
+                                    document.getElementById('micStatus').style.color = '#ffd93d';
+                                }
+                            }
+                            
                             requestAnimationFrame(updateMicLevel);
                         }
-                    }
-                };
-                updateMicLevel();
-            }
+                    };
+                    updateMicLevel();
+                } else {
+                    log('Waiting for mic initialization...');
+                    setTimeout(checkMicReady, 500);
+                }
+            };
+            
+            checkMicReady();
         }
 
         // Check for room in URL
@@ -1112,6 +1144,13 @@
             document.body.addEventListener('touchstart', () => {
                 log('Touch detected - iOS audio fix');
             }, { once: true });
+            
+            // Test microphone availability on load
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                log('getUserMedia API available');
+            } else {
+                log('WARNING: getUserMedia not available');
+            }
         });
     </script>
 </body>
