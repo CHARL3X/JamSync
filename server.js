@@ -29,6 +29,44 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// HTTP fallback signaling endpoints
+app.use(express.json());
+
+app.post('/api/signal', (req, res) => {
+    const { room, type, data } = req.body;
+    console.log(`HTTP Signal: ${type} for room: ${room}`);
+    
+    // Store signal temporarily (in production use Redis)
+    if (!global.httpSignals) global.httpSignals = new Map();
+    if (!global.httpSignals.has(room)) {
+        global.httpSignals.set(room, []);
+    }
+    
+    global.httpSignals.get(room).push({
+        type,
+        data,
+        timestamp: Date.now()
+    });
+    
+    // Keep only recent signals (last 30 seconds)
+    const signals = global.httpSignals.get(room);
+    global.httpSignals.set(room, signals.filter(s => Date.now() - s.timestamp < 30000));
+    
+    res.json({ success: true });
+});
+
+app.get('/api/signal/:room', (req, res) => {
+    const room = req.params.room;
+    const since = parseInt(req.query.since) || 0;
+    
+    if (!global.httpSignals || !global.httpSignals.has(room)) {
+        return res.json({ signals: [] });
+    }
+    
+    const signals = global.httpSignals.get(room).filter(s => s.timestamp > since);
+    res.json({ signals });
+});
+
 // Catch all route - serve index.html for client-side routing
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

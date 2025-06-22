@@ -346,6 +346,10 @@
                 this.roomName = '';
                 this.isHost = false;
                 this.connectionState = 'disconnected';
+                this.signalMethod = null;
+                this.lastSignalCheck = 0;
+                this.wsTimeout = null;
+                this.httpPollInterval = null;
                 
                 // iOS audio context fix
                 this.setupIOSAudioContext();
@@ -367,8 +371,19 @@
                 log(`Connecting to WebSocket: ${wsUrl}`);
                 this.ws = new WebSocket(wsUrl);
                 
+                // Fallback to HTTP after 5 seconds
+                this.wsTimeout = setTimeout(() => {
+                    if (this.ws.readyState !== WebSocket.OPEN) {
+                        log('WebSocket failed - switching to HTTP fallback');
+                        this.ws.close();
+                        this.useHttpSignaling();
+                    }
+                }, 5000);
+                
                 this.ws.onopen = () => {
                     log('WebSocket connected');
+                    clearTimeout(this.wsTimeout);
+                    this.signalMethod = 'websocket';
                     this.ws.send(JSON.stringify({
                         type: 'join',
                         room: this.roomName
@@ -429,7 +444,10 @@
 
                 this.ws.onclose = () => {
                     log('WebSocket disconnected');
-                    this.updateStatus('disconnected', 'Connection lost');
+                    if (this.signalMethod === 'websocket') {
+                        log('Switching to HTTP fallback');
+                        this.useHttpSignaling();
+                    }
                 };
             }
 
@@ -584,13 +602,87 @@
                 }
             }
 
+            async useHttpSignaling() {
+                this.signalMethod = 'http';
+                this.lastSignalCheck = Date.now();
+                
+                log('Using HTTP signaling fallback');
+                
+                // Send initial join signal
+                await this.sendHttpSignal('join', {});
+                
+                // Poll for signals every 2 seconds
+                this.httpPollInterval = setInterval(async () => {
+                    try {
+                        const response = await fetch(`/api/signal/${this.roomName}?since=${this.lastSignalCheck}`);
+                        const { signals } = await response.json();
+                        
+                        for (const signal of signals) {
+                            if (signal.timestamp > this.lastSignalCheck) {
+                                this.lastSignalCheck = signal.timestamp;
+                                await this.handleSignal(signal);
+                            }
+                        }
+                    } catch (error) {
+                        log(`HTTP polling error: ${error.message}`);
+                    }
+                }, 2000);
+            }
+            
+            async sendHttpSignal(type, data) {
+                try {
+                    await fetch('/api/signal', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            room: this.roomName,
+                            type,
+                            data
+                        })
+                    });
+                } catch (error) {
+                    log(`HTTP signal error: ${error.message}`);
+                }
+            }
+            
+            async handleSignal(signal) {
+                log(`Received: ${signal.type}`);
+                
+                switch (signal.type) {
+                    case 'join':
+                        if (this.isHost) {
+                            log('Peer joined - creating offer');
+                            setTimeout(() => this.createOffer(), 1000);
+                        }
+                        break;
+                        
+                    case 'offer':
+                        if (!this.isHost) {
+                            await this.handleOffer(signal.data);
+                        }
+                        break;
+                        
+                    case 'answer':
+                        if (this.isHost) {
+                            await this.handleAnswer(signal.data);
+                        }
+                        break;
+                        
+                    case 'ice-candidate':
+                        await this.handleIceCandidate(signal.data);
+                        break;
+                }
+            }
+
             sendSignal(type, data) {
-                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                if (this.signalMethod === 'websocket' && this.ws && this.ws.readyState === WebSocket.OPEN) {
                     this.ws.send(JSON.stringify({
                         type,
                         data,
                         room: this.roomName
                     }));
+                } else if (this.signalMethod === 'http') {
+                    this.sendHttpSignal(type, data);
                 }
             }
 
@@ -641,6 +733,8 @@
             }
 
             cleanup() {
+                if (this.wsTimeout) clearTimeout(this.wsTimeout);
+                if (this.httpPollInterval) clearInterval(this.httpPollInterval);
                 if (this.localStream) {
                     this.localStream.getTracks().forEach(track => track.stop());
                 }
