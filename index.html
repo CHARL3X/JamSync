@@ -538,8 +538,39 @@
                 };
 
                 this.peerConnection.ontrack = (event) => {
-                    log('Received remote track');
-                    this.handleRemoteStream(event.streams[0]);
+                    log(`Received remote track: ${event.track.kind}, enabled=${event.track.enabled}`);
+                    
+                    if (event.track.kind === 'audio') {
+                        // Create audio element for playback
+                        let audioElement = document.getElementById('remoteAudio');
+                        if (!audioElement) {
+                            audioElement = document.createElement('audio');
+                            audioElement.id = 'remoteAudio';
+                            audioElement.autoplay = true;
+                            audioElement.style.display = 'none';
+                            document.body.appendChild(audioElement);
+                            log('Created remote audio element');
+                        }
+                        
+                        // Handle streams properly
+                        if (event.streams && event.streams[0]) {
+                            audioElement.srcObject = event.streams[0];
+                            this.handleRemoteStream(event.streams[0]);
+                            log('Set remote audio srcObject from streams');
+                        } else {
+                            // Fallback for browsers that don't provide streams
+                            const stream = new MediaStream([event.track]);
+                            audioElement.srcObject = stream;
+                            this.handleRemoteStream(stream);
+                            log('Created new stream for remote audio');
+                        }
+                        
+                        // Handle autoplay issues
+                        audioElement.play().catch(error => {
+                            log(`Autoplay blocked: ${error.message}`);
+                            // Will be resolved when user clicks start jamming
+                        });
+                    }
                 };
 
                 this.peerConnection.onconnectionstatechange = () => {
@@ -571,11 +602,13 @@
                     };
                 }
 
-                // Add local stream
+                // Add local tracks properly
                 if (this.localStream) {
                     this.localStream.getTracks().forEach(track => {
-                        log(`Adding local track: ${track.kind}`);
-                        this.peerConnection.addTrack(track, this.localStream);
+                        if (track.kind === 'audio') {
+                            log(`Adding audio track: enabled=${track.enabled}, readyState=${track.readyState}`);
+                            this.peerConnection.addTrack(track, this.localStream);
+                        }
                     });
                 }
             }
@@ -647,18 +680,31 @@
             }
 
             handleRemoteStream(stream) {
-                log('Handling remote stream');
+                log(`Handling remote stream with ${stream.getTracks().length} tracks`);
                 this.remoteStream = stream;
                 
+                // Verify we have audio tracks
+                const audioTracks = stream.getAudioTracks();
+                log(`Remote stream has ${audioTracks.length} audio tracks`);
+                
+                if (audioTracks.length === 0) {
+                    log('WARNING: No audio tracks in remote stream!');
+                    return;
+                }
+                
                 if (this.audioContext && this.delayNode) {
-                    const remoteSource = this.audioContext.createMediaStreamSource(stream);
-                    this.remoteAnalyser = this.audioContext.createAnalyser();
-                    this.remoteAnalyser.fftSize = 512;
-                    
-                    remoteSource.connect(this.remoteAnalyser);
-                    remoteSource.connect(this.delayNode);
-                    
-                    log('Remote audio connected');
+                    try {
+                        const remoteSource = this.audioContext.createMediaStreamSource(stream);
+                        this.remoteAnalyser = this.audioContext.createAnalyser();
+                        this.remoteAnalyser.fftSize = 512;
+                        
+                        remoteSource.connect(this.remoteAnalyser);
+                        remoteSource.connect(this.delayNode);
+                        
+                        log('Remote audio connected to delay node');
+                    } catch (error) {
+                        log(`Error connecting remote audio: ${error.message}`);
+                    }
                 }
             }
 
@@ -1059,8 +1105,26 @@
             });
         }
 
-        function startJamming() {
+        async function startJamming() {
             log('Starting jam session');
+            
+            // Ensure audio context is running
+            if (syncJam.audioContext && syncJam.audioContext.state === 'suspended') {
+                await syncJam.audioContext.resume();
+                log('Resumed audio context');
+            }
+            
+            // Try to play remote audio if it exists
+            const remoteAudio = document.getElementById('remoteAudio');
+            if (remoteAudio) {
+                try {
+                    await remoteAudio.play();
+                    log('Started remote audio playback');
+                } catch (error) {
+                    log(`Remote audio play failed: ${error.message}`);
+                }
+            }
+            
             syncJam.isJamming = true;
             document.getElementById('controls').hidden = false;
             syncJam.startAudioAnalysis();
