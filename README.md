@@ -18,16 +18,20 @@ Instead of fighting network latency, SyncJam embraces it. Both players agree to 
 
 - Pure JavaScript WebRTC implementation
 - Web Audio API for precise timing
-- Express.js server for deployment
-- Real-time network monitoring
+- Express.js server with WebSocket support
+- Real-time network monitoring via DataChannel
+- HTTP fallback signaling for reliability
 
 ## 📱 Features
 
 - **Agreed Upon Latency**: Both players share the same delay
-- **Adaptive Buffer**: Automatically adjusts for network conditions
+- **Adaptive Buffer**: Real-time recommendations based on network jitter
 - **Visual Meters**: See audio levels in real-time
-- **Network Stats**: Monitor ping, jitter, and sync quality
+- **Network Stats**: Monitor ping, jitter, and sync quality in real-time
 - **One-Click Sharing**: Easy room creation and URL sharing
+- **Dual Signaling**: WebSocket with HTTP fallback for reliability
+- **iOS Compatible**: Works on mobile Safari with touch activation
+- **Mic Testing**: Pre-connection audio verification
 
 ## 🏃‍♂️ Local Development
 
