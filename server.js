@@ -21,7 +21,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/syncjam', (req, res) => {
-    res.sendFile(path.join(__dirname, 'syncjam.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Health check endpoint for Render
