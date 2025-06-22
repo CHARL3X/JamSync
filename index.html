@@ -999,10 +999,11 @@
                     this.localAnalyser.fftSize = 512;
                     this.localAnalyser.smoothingTimeConstant = 0.3;
                     
+                    // ONLY connect to analyser - NO connection to speakers/delay node
                     localSource.connect(this.localAnalyser);
                     
-                    // IMPORTANT: Don't connect local audio to speakers to prevent feedback
-                    // Only connect to analyser for level monitoring
+                    // Local audio is ONLY for: analysis, tempo detection, and sending to peer
+                    // It should NEVER go to your own speakers
                     
                     // Initialize musical intelligence components
                     this.tempoDetector = new TempoDetector(this.audioContext);
@@ -1052,10 +1053,11 @@
                         this.remoteAnalyser = this.audioContext.createAnalyser();
                         this.remoteAnalyser.fftSize = 512;
                         
+                        // Connect remote audio to both analyser AND delay node (for speakers)
                         remoteSource.connect(this.remoteAnalyser);
                         remoteSource.connect(this.delayNode);
                         
-                        log('Remote audio connected to delay node');
+                        log('Remote audio connected - you will hear ONLY your partner, not yourself');
                     } catch (error) {
                         log(`Error connecting remote audio: ${error.message}`);
                     }
@@ -1598,16 +1600,8 @@
                 log('Resumed audio context');
             }
             
-            // Try to play remote audio if it exists
-            const remoteAudio = document.getElementById('remoteAudio');
-            if (remoteAudio) {
-                try {
-                    await remoteAudio.play();
-                    log('Started remote audio playback');
-                } catch (error) {
-                    log(`Remote audio play failed: ${error.message}`);
-                }
-            }
+            // Audio is handled entirely through Web Audio API
+            // No HTML audio elements needed - prevents local feedback
             
             syncJam.isJamming = true;
             document.getElementById('controls').hidden = false;
