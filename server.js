@@ -52,10 +52,24 @@ wss.on('connection', (ws) => {
                     rooms.get(data.room).add(ws);
                     ws.room = data.room;
                     
+                    // Send room info to the joining client
+                    ws.send(JSON.stringify({
+                        type: 'room-joined',
+                        room: data.room,
+                        participantCount: rooms.get(data.room).size
+                    }));
+                    
                     // Notify others in room
                     broadcast(data.room, ws, {
                         type: 'peer-joined',
-                        room: data.room
+                        room: data.room,
+                        participantCount: rooms.get(data.room).size
+                    });
+                    
+                    // Update participant count for everyone
+                    broadcastToRoom(data.room, {
+                        type: 'participant-update',
+                        count: rooms.get(data.room).size
                     });
                     break;
                     
@@ -90,12 +104,28 @@ function broadcast(room, sender, data) {
     });
 }
 
+function broadcastToRoom(room, data) {
+    if (!rooms.has(room)) return;
+    
+    rooms.get(room).forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
+        }
+    });
+}
+
 function leaveRoom(ws) {
     if (ws.room && rooms.has(ws.room)) {
         rooms.get(ws.room).delete(ws);
         broadcast(ws.room, ws, {
             type: 'peer-left',
             room: ws.room
+        });
+        
+        // Update participant count
+        broadcastToRoom(ws.room, {
+            type: 'participant-update',
+            count: rooms.get(ws.room).size
         });
         
         // Clean up empty rooms

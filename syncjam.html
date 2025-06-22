@@ -192,6 +192,40 @@
             overflow-y: auto;
         }
 
+        .room-info {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            font-size: 1.1rem;
+        }
+
+        .mic-test {
+            background: rgba(76, 237, 196, 0.2);
+            border: 2px solid #4ecdc4;
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .mic-level {
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .mic-level-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            width: 0%;
+            transition: width 0.1s;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 1rem;
@@ -219,6 +253,11 @@
             Disconnected - Enter a room name to start
         </div>
 
+        <div class="room-info" id="roomInfo" hidden>
+            <span>🎸 Room: <strong id="roomNameDisplay"></strong></span>
+            <span>👥 Participants: <strong id="participantCount">0</strong></span>
+        </div>
+
         <div class="room-section">
             <input type="text" id="roomName" placeholder="Enter room name" 
                    maxlength="50" autocomplete="off">
@@ -233,6 +272,15 @@
 
         <div class="warning">
             ⚠️ <strong>IMPORTANT:</strong> Use headphones to prevent feedback!
+        </div>
+
+        <div class="mic-test" id="micTest" hidden>
+            <h3>🎤 Microphone Test</h3>
+            <p>Speak to test your microphone:</p>
+            <div class="mic-level">
+                <div class="mic-level-bar" id="micLevelBar"></div>
+            </div>
+            <p id="micStatus">Checking microphone...</p>
         </div>
 
         <div class="controls" id="controls" hidden>
@@ -332,11 +380,24 @@
                     log(`Received: ${data.type}`);
                     
                     switch (data.type) {
+                        case 'room-joined':
+                            log(`Joined room with ${data.participantCount} participants`);
+                            this.updateParticipantCount(data.participantCount);
+                            if (data.participantCount > 1) {
+                                log('Other participant already in room - waiting for offer');
+                            }
+                            break;
+                            
                         case 'peer-joined':
                             log('Peer joined room');
+                            this.updateParticipantCount(data.participantCount);
                             if (this.isHost) {
-                                await this.createOffer();
+                                setTimeout(() => this.createOffer(), 1000);
                             }
+                            break;
+                            
+                        case 'participant-update':
+                            this.updateParticipantCount(data.count);
                             break;
                             
                         case 'offer':
@@ -357,7 +418,7 @@
                             
                         case 'peer-left':
                             log('Peer left room');
-                            this.cleanup();
+                            this.updateStatus('disconnected', 'Partner disconnected');
                             break;
                     }
                 };
@@ -570,6 +631,15 @@
                 statusEl.className = `status ${state}`;
             }
 
+            updateParticipantCount(count) {
+                document.getElementById('participantCount').textContent = count;
+                if (count === 2) {
+                    log('Room full - ready to connect!');
+                } else if (count > 2) {
+                    log('Warning: More than 2 participants!');
+                }
+            }
+
             cleanup() {
                 if (this.localStream) {
                     this.localStream.getTracks().forEach(track => track.stop());
@@ -611,7 +681,19 @@
             await syncJam.initializePeerConnection();
             syncJam.connectWebSocket();
             
+            document.getElementById('roomNameDisplay').textContent = roomName;
+            document.getElementById('roomInfo').hidden = false;
+            
+            // Show mic test
+            showMicTest();
+            
             syncJam.updateStatus('connecting', `Room "${roomName}" created! Waiting for partner...`);
+            
+            document.getElementById('roomNameDisplay').textContent = roomName;
+            document.getElementById('roomInfo').hidden = false;
+            
+            // Show mic test
+            showMicTest();
         }
 
         async function joinRoom() {
@@ -635,6 +717,12 @@
             
             await syncJam.initializePeerConnection();
             syncJam.connectWebSocket();
+            
+            document.getElementById('roomNameDisplay').textContent = roomName;
+            document.getElementById('roomInfo').hidden = false;
+            
+            // Show mic test
+            showMicTest();
         }
 
         function shareRoom() {
@@ -674,6 +762,35 @@
         function updateBuffer(value) {
             if (syncJam) {
                 syncJam.updateBuffer(value);
+            }
+        }
+
+        function showMicTest() {
+            const micTest = document.getElementById('micTest');
+            micTest.hidden = false;
+            
+            if (syncJam && syncJam.localAnalyser) {
+                const micLevelData = new Uint8Array(256);
+                let micWorking = false;
+                
+                const updateMicLevel = () => {
+                    if (syncJam.localAnalyser) {
+                        syncJam.localAnalyser.getByteFrequencyData(micLevelData);
+                        const level = Math.max(...micLevelData) / 255;
+                        document.getElementById('micLevelBar').style.width = (level * 100) + '%';
+                        
+                        if (level > 0.1 && !micWorking) {
+                            micWorking = true;
+                            document.getElementById('micStatus').textContent = '✅ Microphone working!';
+                            document.getElementById('micStatus').style.color = '#4ecdc4';
+                        }
+                        
+                        if (micTest.hidden === false) {
+                            requestAnimationFrame(updateMicLevel);
+                        }
+                    }
+                };
+                updateMicLevel();
             }
         }
 
