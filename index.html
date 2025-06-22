@@ -256,6 +256,7 @@
             .container {
                 padding: 1rem;
                 margin: 1rem;
+                width: 95%;
             }
             
             .header h1 {
@@ -264,6 +265,35 @@
             
             .room-section {
                 flex-direction: column;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-group {
+                margin-bottom: 1rem;
+            }
+            
+            /* Mobile chat optimizations */
+            #chatMessages {
+                height: 80px !important;
+                font-size: 0.75rem !important;
+            }
+            
+            #chatInput {
+                font-size: 0.9rem !important;
+                padding: 0.5rem !important;
+            }
+            
+            /* Mobile-friendly metronome */
+            #visualMetronome {
+                height: 50px !important;
+            }
+            
+            #metronomeBeat {
+                width: 30px !important;
+                height: 30px !important;
             }
         }
     </style>
@@ -391,11 +421,17 @@
 
             <!-- Chat Section -->
             <div class="control-group" id="chatSection">
-                <h3>💬 Session Chat</h3>
-                <div id="chatMessages" style="height: 100px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 0.5rem; overflow-y: auto; font-size: 0.8rem; margin-bottom: 0.5rem;"></div>
+                <h3>💬 Quick Chat</h3>
+                <div id="chatMessages" style="height: 100px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 0.5rem; overflow-y: auto; font-size: 0.8rem; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.1);"></div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" id="chatInput" placeholder="Quick message..." style="flex: 1; padding: 0.3rem; border: none; border-radius: 4px; background: rgba(255,255,255,0.1); color: white; font-size: 0.8rem;" maxlength="100">
-                    <button class="btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;" onclick="sendChatMessage()">Send</button>
+                    <input type="text" id="chatInput" placeholder="Type message..." style="flex: 1; padding: 0.5rem; border: none; border-radius: 6px; background: rgba(255,255,255,0.15); color: white; font-size: 0.85rem;" maxlength="100" autocomplete="off">
+                    <button class="btn" style="padding: 0.5rem 1rem; font-size: 0.85rem; min-width: 60px;" onclick="sendChatMessage()">📤</button>
+                </div>
+                <div style="margin-top: 0.3rem; display: flex; gap: 0.3rem; flex-wrap: wrap;">
+                    <button class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; opacity: 0.8;" onclick="sendChatMessage('ready!')">✓ Ready</button>
+                    <button class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; opacity: 0.8;" onclick="sendChatMessage('wait')">⏸️ Wait</button>
+                    <button class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; opacity: 0.8;" onclick="sendChatMessage('again')">🔄 Again</button>
+                    <button class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; opacity: 0.8;" onclick="sendChatMessage('nice! 🎵')">👍 Nice</button>
                 </div>
             </div>
         </div>
@@ -869,36 +905,11 @@
                 this.peerConnection.ontrack = (event) => {
                     log(`Received remote track: ${event.track.kind}, enabled=${event.track.enabled}`);
                     
-                    if (event.track.kind === 'audio') {
-                        // Create audio element for playback
-                        let audioElement = document.getElementById('remoteAudio');
-                        if (!audioElement) {
-                            audioElement = document.createElement('audio');
-                            audioElement.id = 'remoteAudio';
-                            audioElement.autoplay = true;
-                            audioElement.style.display = 'none';
-                            document.body.appendChild(audioElement);
-                            log('Created remote audio element');
-                        }
-                        
-                        // Handle streams properly
-                        if (event.streams && event.streams[0]) {
-                            audioElement.srcObject = event.streams[0];
-                            this.handleRemoteStream(event.streams[0]);
-                            log('Set remote audio srcObject from streams');
-                        } else {
-                            // Fallback for browsers that don't provide streams
-                            const stream = new MediaStream([event.track]);
-                            audioElement.srcObject = stream;
-                            this.handleRemoteStream(stream);
-                            log('Created new stream for remote audio');
-                        }
-                        
-                        // Handle autoplay issues
-                        audioElement.play().catch(error => {
-                            log(`Autoplay blocked: ${error.message}`);
-                            // Will be resolved when user clicks start jamming
-                        });
+                    if (event.track.kind === 'audio' && event.streams && event.streams[0]) {
+                        // ONLY use Web Audio API - no HTML audio element
+                        // This ensures we have full control over what goes to speakers
+                        this.handleRemoteStream(event.streams[0]);
+                        log('Remote audio will be processed through Web Audio API only');
                     }
                 };
 
